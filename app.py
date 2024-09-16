@@ -3,7 +3,6 @@ import whisper
 import io
 import librosa
 import numpy as np
-from deep_translator import GoogleTranslator
 from flasgger import Swagger
 
 app = Flask(__name__)
@@ -21,59 +20,6 @@ def getsomething():
     """
     response = "working......"
     return jsonify(response), 200 
-
-@app.route('/translate', methods=['POST'])
-def translate():
-    """
-    Translate text from one language to another
-    ---
-    parameters:
-      - name: body
-        in: body
-        schema:
-          type: object
-          required:
-            - text
-            - language_from
-            - language_to
-          properties:
-            text:
-              type: string
-              description: Text to be translated
-            language_from:
-              type: string
-              description: Language code of the input text (e.g., 'en')
-            language_to:
-              type: string
-              description: Language code for the translation (e.g., 'es')
-    responses:
-      200:
-        description: Translation successful
-        schema:
-          type: object
-          properties:
-            translated_text:
-              type: string
-              description: Translated text
-      400:
-        description: Missing text or language code
-      500:
-        description: Internal server error
-    """
-    data = request.json
-    if 'text' not in data or 'language_to' not in data or 'language_from' not in data:
-        return jsonify({'error': 'Missing text or language code'}), 400
-    text_to_translate = data['text']
-    current_language = data['language_from']
-    target_language = data['language_to']
-    try:
-        translator = GoogleTranslator(source=current_language, target=target_language)
-        translated_text = translator.translate(text_to_translate)
-        return jsonify({'translated_text': translated_text}), 200
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():

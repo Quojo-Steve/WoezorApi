@@ -4,6 +4,5 @@ openai-whisper @ git+https://github.com/openai/whisper.git@279133e3107392276dc50
 torch==2.0.1
 librosa==0.10.2.post1
 numpy==1.26.0
-deep-translator==1.11.4
 gunicorn==22.0.0
 Werkzeug==2.3.7
