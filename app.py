@@ -1,14 +1,17 @@
 from flask import Flask, request, jsonify
-import whisper
-import io
-import librosa
-import numpy as np
 from flasgger import Swagger
+import assemblyai as aai
+import os
 
 app = Flask(__name__)
-model = whisper.load_model("base")  # Choose a suitable model size
 swagger = Swagger(app)  # Add Swagger UI to your app
 
+# Set AssemblyAI API key
+aai.settings.api_key = "40cf949337fe4561a9fa11f4bb2bc3b3"
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Health check route
 @app.route('/', methods=['GET'])
 def getsomething():
     """
@@ -21,15 +24,17 @@ def getsomething():
     response = "working......"
     return jsonify(response), 200 
 
+# Transcription route
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
     """
     Transcribe audio file to text
     ---
     parameters:
-      - name: file
+      - name: audio
         in: formData
         type: file
+        required: true
         description: Audio file to be transcribed (wav, mp3, etc.)
     responses:
       200:
@@ -45,29 +50,36 @@ def transcribe():
       500:
         description: Internal server error
     """
-    if 'file' not in request.files:
+    if 'audio' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     
-    file = request.files['file']
+    file = request.files['audio']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
 
+    audio_file = request.files['audio']
+    file_path = os.path.join(UPLOAD_FOLDER, audio_file.filename)
+    audio_file.save(file_path)
+
     try:
-        # Convert FileStorage to bytes
-        audio_bytes = file.read()
-        
-        # Load audio file into a NumPy array
-        audio, sr = librosa.load(io.BytesIO(audio_bytes), sr=None)
-        
-        # Use Whisper's transcribe method directly
-        result = model.transcribe(audio)
-        
-        return jsonify({'text': result['text']})
+        # Use AssemblyAI to transcribe the file
+        transcriber = aai.Transcriber()
+        transcript = transcriber.transcribe(file_path)
+
+        # Check for errors in the transcription process
+        if transcript.status == aai.TranscriptStatus.error:
+            return jsonify({'error': transcript.error}), 500
+
+        # Return the transcribed text
+        return jsonify({'text': transcript.text}), 200
+
     except Exception as e:
-        import traceback
-        traceback_str = traceback.format_exc()
-        print(traceback_str)
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error: ' + str(e)}), 500
+
+    finally:
+        # Clean up the temporary file
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 if __name__ == '__main__':
     app.run(debug=True)
